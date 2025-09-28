@@ -5,9 +5,9 @@
   "name": "SIDANU",
   "orientation": "portrait",
   "scope": "/",
-  "short_name": "SIDANU",
+  "short_name": "sidanu",
   "start_url": "https://mtsnukanang.github.io/pangkalan-data-santri/",
-  "theme_color": "#ffffff",
+  "theme_color": "#22c55e",
   "lang": "id",
   "icons": [
     {
@@ -22,3 +22,4 @@
     }
   ]
 }
+
