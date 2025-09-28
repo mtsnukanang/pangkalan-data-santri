@@ -1,0 +1,24 @@
+{
+  "background_color": "#ffffff",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "SIDANU",
+  "orientation": "portrait",
+  "scope": "/",
+  "short_name": "sidanu",
+  "start_url": "https://mtsnukanang.github.io/pangkalan-data-santri/",
+  "theme_color": "#ffffff",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "https://placehold.co/192x192/22c55e/ffffff?text=PNU",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://placehold.co/512x512/22c55e/ffffff?text=PNU",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
