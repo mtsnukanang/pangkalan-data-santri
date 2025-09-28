@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Pangkalan Data Santri PNU Kanang</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .table-auto th, .table-auto td {
+            white-space: nowrap;
+        }
+        .modal {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        /* Custom styles for sidebar */
+        .sidebar-link.active {
+            background-color: #22c55e; /* green-500 */
+            color: white;
+        }
+         .sidebar-link.active i {
+            color: white;
+        }
+        .sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Login Container -->
+    <div id="loginContainer" class="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
+        <div class="w-full max-w-md">
+            <header class="mb-8 text-center">
+                <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Pangkalan Data Santri</h1>
+                <p class="text-lg text-gray-600 mt-2">Pondok Pesantren Nahdlatul Ummah (PNU) Kanang</p>
+            </header>
+            <div class="bg-white p-8 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Login Pengurus</h2>
+                <form id="loginForm">
+                    <div class="mb-4">
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" id="email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                    </div>
+                    <div class="mb-6">
+                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" id="password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                    </div>
+                    <p id="loginError" class="text-red-500 text-sm mb-4 text-center"></p>
+                    <button type="submit" id="loginBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2">
+                        <span>Login</span>
+                        <div id="loginSpinner" class="hidden w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
+                    </button>
+                </form>
+            </div>
+             <p class="text-center text-xs text-gray-500 mt-4">
+                Catatan: Akun harus dibuat terlebih dahulu melalui Firebase Console.
+            </p>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="appContainer" class="hidden">
+        <div class="relative min-h-screen md:flex">
+            <!-- Mobile Menu Overlay -->
+            <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
+            
+            <!-- Sidebar -->
+            <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 bg-white text-gray-800 w-64 shadow-lg transform -translate-x-full md:relative md:translate-x-0 z-40">
+                <div class="h-20 flex items-center justify-center border-b">
+                     <h1 class="text-xl font-bold text-gray-900">PNU Kanang</h1>
+                </div>
+                <nav class="flex-1 px-4 py-6 space-y-2">
+                    <a href="#" data-page="dashboard" class="sidebar-link flex items-center px-4 py-2.5 rounded-lg hover:bg-gray-200 transition-colors duration-200 active">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3 text-gray-600"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" data-page="kamar" class="sidebar-link flex items-center px-4 py-2.5 rounded-lg hover:bg-gray-200 transition-colors duration-200">
+                        <i data-lucide="bed-double" class="w-5 h-5 mr-3 text-gray-600"></i>
+                        <span>Kamar</span>
+                    </a>
+                    <a href="#" data-page="santri" class="sidebar-link flex items-center px-4 py-2.5 rounded-lg hover:bg-gray-200 transition-colors duration-200">
+                        <i data-lucide="users" class="w-5 h-5 mr-3 text-gray-600"></i>
+                        <span>Santri</span>
+                    </a>
+                    <a href="#" data-page="admin" class="sidebar-link flex items-center px-4 py-2.5 rounded-lg hover:bg-gray-200 transition-colors duration-200 hidden">
+                        <i data-lucide="user-cog" class="w-5 h-5 mr-3 text-gray-600"></i>
+                        <span>Admin</span>
+                    </a>
+                </nav>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-1 flex flex-col overflow-hidden">
+                <!-- Topbar -->
+                <header class="h-20 bg-white border-b flex items-center justify-between md:justify-end px-4 md:px-8">
+                    <button id="hamburger-btn" class="md:hidden p-2 text-gray-600 hover:text-gray-900">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                     <div class="relative inline-block text-left">
+                        <div>
+                            <button type="button" id="profileMenuBtn" class="inline-flex items-center justify-center w-full rounded-full h-12 w-12 bg-gray-200 hover:bg-gray-300 focus:outline-none">
+                                <i data-lucide="user" class="text-gray-700"></i>
+                            </button>
+                        </div>
+                        <div id="profileDropdown" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20 hidden">
+                            <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="profile-menu-button">
+                                <div class="px-4 py-3 border-b">
+                                    <p class="text-sm text-gray-900 font-semibold" id="userRoleDisplay">Admin</p>
+                                    <p id="userEmailDisplay" class="text-sm text-gray-500 truncate"></p>
+                                </div>
+                                <a href="#" id="logoutBtn" class="flex items-center gap-3 text-red-600 block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">
+                                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                                    <span>Logout</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Page Content -->
+                <div class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 sm:p-6 lg:p-8">
+                    
+                    <!-- Dashboard Page -->
+                    <div id="page-dashboard" class="page-content">
+                         <h1 class="text-3xl font-bold text-gray-900 mb-6">Dashboard</h1>
+                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+                                <div class="bg-gray-100 p-4 rounded-full mr-4">
+                                    <i data-lucide="users" class="w-8 h-8 text-gray-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500 text-sm font-medium">Total Santri</p>
+                                    <p id="stat-total" class="text-3xl font-bold text-gray-900">0</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+                                <div class="bg-blue-100 p-4 rounded-full mr-4">
+                                    <i data-lucide="bed-double" class="w-8 h-8 text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500 text-sm font-medium">Jumlah Kamar</p>
+                                    <p id="stat-kamar" class="text-3xl font-bold text-gray-900">0</p>
+                                </div>
+                            </div>
+                             <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+                                <div class="bg-green-100 p-4 rounded-full mr-4">
+                                    <i data-lucide="user-check" class="w-8 h-8 text-green-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500 text-sm font-medium">Santri Mondok</p>
+                                    <p id="stat-mondok" class="text-3xl font-bold text-gray-900">0</p>
+                                </div>
+                            </div>
+                             <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+                                <div class="bg-yellow-100 p-4 rounded-full mr-4">
+                                    <i data-lucide="activity" class="w-8 h-8 text-yellow-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500 text-sm font-medium">Sakit</p>
+                                    <p id="stat-sakit" class="text-3xl font-bold text-gray-900">0</p>
+                                </div>
+                            </div>
+                             <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+                                <div class="bg-indigo-100 p-4 rounded-full mr-4">
+                                    <i data-lucide="file-text" class="w-8 h-8 text-indigo-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500 text-sm font-medium">Izin</p>
+                                    <p id="stat-izin" class="text-3xl font-bold text-gray-900">0</p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+                                <div class="bg-red-100 p-4 rounded-full mr-4">
+                                    <i data-lucide="user-x" class="w-8 h-8 text-red-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500 text-sm font-medium">Tanpa Keterangan</p>
+                                    <p id="stat-tk" class="text-3xl font-bold text-gray-900">0</p>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+
+                    <!-- Santri Page -->
+                    <div id="page-santri" class="page-content hidden">
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                             <h1 class="text-3xl font-bold text-gray-900">Data Santri</h1>
+                             <div class="relative inline-block text-left">
+                                <div>
+                                    <button type="button" id="actionsMenuBtn" class="inline-flex justify-center w-full rounded-lg shadow-sm px-4 py-2 bg-green-600 text-white font-bold hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-green-500 items-center gap-2 transition-transform transform hover:scale-105">
+                                        <i data-lucide="plus-circle"></i>
+                                        <span>Tambah Data</span>
+                                        <i data-lucide="chevron-down" class=" -mr-1 ml-2 h-5 w-5"></i>
+                                    </button>
+                                </div>
+                    
+                                <div id="actionsDropdown" class="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10 hidden">
+                                    <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="actions-menu-button">
+                                        <a href="#" id="addManualBtn" class="flex items-center gap-3 text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">
+                                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                            <span>Tambah Manual</span>
+                                        </a>
+                                        <a href="#" id="importDataBtn" class="flex items-center gap-3 text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">
+                                            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                                            <span>Import Data</span>
+                                        </a>
+                                        <a href="#" id="downloadTemplateDropdownBtn" class="flex items-center gap-3 text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100" role="menuitem">
+                                            <i data-lucide="download-cloud" class="w-4 h-4"></i>
+                                            <span>Download Template</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filters -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-6 p-4 bg-white rounded-lg shadow">
+                            <div class="col-span-1 sm:col-span-2 lg:col-span-4 xl:col-span-2">
+                                <label for="filterNama" class="block text-sm font-medium text-gray-700 mb-1">Nama Santri</label>
+                                <div class="relative">
+                                    <input type="text" id="filterNama" placeholder="Cari nama santri..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-sm">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i data-lucide="search" class="text-gray-400 h-4 w-4"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-span-1">
+                                <label for="filterTingkatKelas" class="block text-sm font-medium text-gray-700 mb-1">Tingkat/Kelas</label>
+                                <input type="text" id="filterTingkatKelas" placeholder="Cth: MTs" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-sm">
+                            </div>
+                            <div class="col-span-1">
+                                <label for="filterKamar" class="block text-sm font-medium text-gray-700 mb-1">Kamar</label>
+                                <select id="filterKamar" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-sm">
+                                    <option value="">Semua</option>
+                                </select>
+                            </div>
+                            <div class="col-span-1">
+                                <label for="filterTingkatBacaan" class="block text-sm font-medium text-gray-700 mb-1">Tingkat Bacaan</label>
+                                <select id="filterTingkatBacaan" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-sm">
+                                    <option value="">Semua</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                </select>
+                            </div>
+                            <div class="col-span-1">
+                                <label for="filterKeterangan" class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
+                                <select id="filterKeterangan" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-green-500 text-sm">
+                                    <option value="">Semua</option>
+                                    <option value="Mondok">Mondok</option>
+                                    <option value="Sakit">Sakit</option>
+                                    <option value="Izin">Izin</option>
+                                    <option value="TK">Tanpa Keterangan</option>
+                                </select>
+                            </div>
+                            <div class="col-span-1 flex items-end">
+                                <button id="resetFiltersBtn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2 text-sm">
+                                    <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+                                    <span>Reset</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Santri Data Table -->
+                        <div class="bg-white rounded-lg shadow-lg overflow-x-auto">
+                            <table class="w-full table-auto">
+                                <thead class="bg-gray-200">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Nama</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">NISN / NIK</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Tingkat & Kelas</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Kamar</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Tingkat Bacaan</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Kontak Wali</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Keterangan</th>
+                                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="santriTableBody" class="divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Kamar Page -->
+                    <div id="page-kamar" class="page-content hidden">
+                         <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                            <h1 class="text-3xl font-bold text-gray-900">Manajemen Kamar</h1>
+                            <button id="addKamarBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2">
+                                <i data-lucide="plus"></i>
+                                <span>Tambah Kamar</span>
+                            </button>
+                        </div>
+                        <div class="bg-white rounded-lg shadow-lg overflow-x-auto">
+                            <table class="w-full table-auto">
+                                <thead class="bg-gray-200">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Nama Kamar</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Penanggung Jawab</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Kapasitas</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Jumlah Santri</th>
+                                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="kamarTableBody" class="divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Admin Page -->
+                    <div id="page-admin" class="page-content hidden">
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                            <h1 class="text-3xl font-bold text-gray-900">Manajemen Admin</h1>
+                            <button id="addAdminBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2">
+                                <i data-lucide="user-plus"></i>
+                                <span>Tambah Admin</span>
+                            </button>
+                        </div>
+
+                        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-md mb-6" role="alert">
+                            <p class="font-bold">Informasi Penting</p>
+                            <p>Untuk menambah admin baru, buat akun di <a href="https://console.firebase.google.com/" target="_blank" class="font-semibold underline">Firebase Console</a>, salin UID-nya, lalu tambahkan di sini.</p>
+                        </div>
+
+                        <!-- Admin List Table -->
+                        <div class="bg-white rounded-lg shadow-lg overflow-x-auto">
+                            <table class="w-full table-auto">
+                                <thead class="bg-gray-200">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Email Admin</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Peran</th>
+                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminTableBody" class="divide-y divide-gray-200">
+                                    <!-- Admin data will be inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Modals -->
+        <!-- Add/Edit Santri Modal -->
+        <div id="santriModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-full overflow-y-auto">
+                <form id="santriForm" class="p-8">
+                    <h2 id="modalTitle" class="text-2xl font-bold mb-6 text-gray-800">Tambah Data Santri</h2>
+                    <input type="hidden" id="santriId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="nama" class="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
+                            <input type="text" id="nama" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                        </div>
+                        <div>
+                            <label for="nisn" class="block text-sm font-medium text-gray-700 mb-1">NISN</label>
+                            <input type="text" id="nisn" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                        <div>
+                            <label for="nik" class="block text-sm font-medium text-gray-700 mb-1">NIK</label>
+                            <input type="text" id="nik" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                        <div>
+                            <label for="tingkat" class="block text-sm font-medium text-gray-700 mb-1">Tingkat</label>
+                            <select id="tingkat" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                                <option value="MTs">MTs</option>
+                                <option value="MA">MA</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="kelas" class="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
+                            <input type="text" id="kelas" placeholder="Contoh: VII A / X B" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                        </div>
+                        <div>
+                            <label for="kamar" class="block text-sm font-medium text-gray-700 mb-1">Kamar</label>
+                            <select id="kamar" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                                <!-- Kamar options will be populated dynamically -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="tingkatBacaan" class="block text-sm font-medium text-gray-700 mb-1">Tingkat Bacaan</label>
+                            <select id="tingkatBacaan" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="kontakWali" class="block text-sm font-medium text-gray-700 mb-1">Kontak Orang Tua/Wali</label>
+                            <input type="text" id="kontakWali" placeholder="Nomor Telepon" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="dokumenKk" class="block text-sm font-medium text-gray-700 mb-1">Link Dokumen KK (Opsional)</label>
+                            <input type="url" id="dokumenKk" placeholder="https://link-google-drive/kk" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                             <p class="text-xs text-gray-500 mt-1">Unggah file ke Google Drive/layanan lain dan tempel linknya di sini.</p>
+                        </div>
+                    </div>
+                    <div class="mt-8 flex justify-end gap-4">
+                        <button type="button" id="cancelBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg">Batal</button>
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+         <!-- Status Modal -->
+        <div id="statusModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+                <h2 class="text-xl font-bold mb-4">Ubah Keterangan Santri</h2>
+                <p class="mb-4">Pilih keterangan untuk santri: <strong id="statusSantriName"></strong></p>
+                <div class="mb-4">
+                    <label for="linkSuratInput" class="block text-sm font-medium text-gray-700 mb-1">Link Surat (Opsional)</label>
+                    <input type="url" id="linkSuratInput" placeholder="https://link-surat/sakit" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="flex flex-col gap-4">
+                    <button id="setSakitBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"><i data-lucide="activity"></i> Sakit</button>
+                    <button id="setIzinBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"><i data-lucide="file-text"></i> Izin</button>
+                    <button id="setTkBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"><i data-lucide="user-x"></i> TK</button>
+                    <button id="clearStatusBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2"><i data-lucide="x-circle"></i> Hapus Keterangan</button>
+                </div>
+                <div class="mt-6 text-right">
+                    <button type="button" id="cancelStatusBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Tutup</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Import Modal -->
+        <div id="importModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg p-8">
+                <h2 class="text-2xl font-bold mb-4">Import Data Santri</h2>
+                <p class="text-gray-600 mb-6">Unggah file CSV yang telah diisi sesuai dengan template. Kolom 'nama', 'tingkat', 'kelas', dan 'tingkatBacaan' wajib diisi.</p>
+                <form id="importForm">
+                    <div>
+                        <label for="csvFile" class="block text-sm font-medium text-gray-700 mb-2">Pilih File CSV</label>
+                        <input type="file" id="csvFile" name="csvFile" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept=".csv" required>
+                    </div>
+                    <div id="importFeedback" class="mt-4 text-sm"></div>
+                    <div class="mt-8 flex justify-end gap-4">
+                        <button type="button" id="cancelImportBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg">Batal</button>
+                        <button type="submit" id="submitImportBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg flex items-center gap-2">
+                            <span id="importBtnText">Import</span>
+                            <div id="importSpinner" class="hidden w-4 h-4 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add/Edit Admin Modal -->
+        <div id="adminModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-lg shadow-2xl w-full max-w-md">
+                <form id="adminForm" class="p-8">
+                    <h2 id="adminModalTitle" class="text-2xl font-bold mb-6 text-gray-800">Tambah Admin Baru</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="adminUid" class="block text-sm font-medium text-gray-700 mb-1">User ID (dari Firebase Console)</label>
+                            <input type="text" id="adminUid" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                        </div>
+                        <div>
+                            <label for="adminEmail" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="adminEmail" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                        </div>
+                        <div>
+                            <label for="adminRole" class="block text-sm font-medium text-gray-700 mb-1">Peran</label>
+                            <select id="adminRole" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                                <option value="admin">Admin</option>
+                                <option value="superadmin">Super Admin</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="adminStatus" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select id="adminStatus" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                                <option value="aktif">Aktif</option>
+                                <option value="nonaktif">Nonaktif</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-8 flex justify-end gap-4">
+                        <button type="button" id="cancelAdminBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg">Batal</button>
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add/Edit Kamar Modal -->
+        <div id="kamarModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-lg shadow-2xl w-full max-w-md">
+                <form id="kamarForm" class="p-8">
+                    <h2 id="kamarModalTitle" class="text-2xl font-bold mb-6 text-gray-800">Tambah Kamar Baru</h2>
+                    <input type="hidden" id="kamarId">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="kamarNama" class="block text-sm font-medium text-gray-700 mb-1">Nama Kamar</label>
+                            <input type="text" id="kamarNama" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                        </div>
+                         <div>
+                            <label for="penanggungJawab" class="block text-sm font-medium text-gray-700 mb-1">Ustadz/Ustadzah Penanggung Jawab</label>
+                            <input type="text" id="penanggungJawab" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                        </div>
+                        <div>
+                            <label for="kamarKapasitas" class="block text-sm font-medium text-gray-700 mb-1">Kapasitas</label>
+                            <input type="number" id="kamarKapasitas" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required min="1">
+                        </div>
+                    </div>
+                    <div class="mt-8 flex justify-end gap-4">
+                        <button type="button" id="cancelKamarBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg">Batal</button>
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed bottom-5 right-5 bg-gray-900 text-white py-2 px-4 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+            <p id="toastMessage"></p>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, setLogLevel, writeBatch, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAfvSB91YtNG0lOZB-MfvFjrOLCbMKCRME",
+            authDomain: "pangkalan-data-santri.firebaseapp.com",
+            projectId: "pangkalan-data-santri",
+            storageBucket: "pangkalan-data-santri.appspot.com",
+            messagingSenderId: "618367271315",
+            appId: "1:618367271315:web:8064c729cd8e95d67a866",
+            measurementId: "G-6E83VQKCTZ"
+        };
+
+        // --- Firebase Initialization ---
+        let app, db, auth, santriCollectionRef, kamarCollectionRef, unsubscribeSantri, unsubscribeAdmins, unsubscribeKamar;
+        let currentUserRole = 'admin';
+
+        async function initializeFirebase() {
+            if (!firebaseConfig || !firebaseConfig.projectId) {
+                console.error("Firebase config is not available or invalid.");
+                loginError.textContent = "Konfigurasi Firebase tidak ditemukan.";
+                return;
+            }
+            
+            try {
+                app = initializeApp(firebaseConfig);
+                const analytics = getAnalytics(app);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('error'); 
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        const adminDocRef = doc(db, 'admins', user.uid);
+                        const adminDocSnap = await getDoc(adminDocRef);
+
+                        if (adminDocSnap.exists() && adminDocSnap.data().status === 'aktif') {
+                            currentUserRole = adminDocSnap.data().role || 'admin';
+                            loginContainer.classList.add('hidden');
+                            appContainer.classList.remove('hidden');
+                            document.getElementById('userEmailDisplay').textContent = user.email;
+                            updateUIAccess();
+                            
+                            santriCollectionRef = collection(db, 'santri');
+                            kamarCollectionRef = collection(db, 'kamar');
+                            listenToSantriData();
+                            listenToKamarData();
+
+                            if (currentUserRole === 'superadmin') {
+                                listenToAdminsData();
+                            }
+                        } else {
+                            await signOut(auth);
+                            loginError.textContent = 'Akun Anda tidak aktif atau tidak terdaftar.';
+                        }
+                    } else {
+                        currentUserRole = 'admin';
+                        appContainer.classList.add('hidden');
+                        loginContainer.classList.remove('hidden');
+                        loginError.textContent = '';
+                        if (unsubscribeSantri) unsubscribeSantri();
+                        if (unsubscribeAdmins) unsubscribeAdmins();
+                        if (unsubscribeKamar) unsubscribeKamar();
+                    }
+                });
+
+            } catch(error) {
+                console.error("Firebase initialization failed:", error);
+                loginError.textContent = "Inisialisasi aplikasi gagal.";
+            }
+        }
+
+        // --- DOM Elements ---
+        const loginContainer = document.getElementById('loginContainer');
+        const appContainer = document.getElementById('appContainer');
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginSpinner = document.getElementById('loginSpinner');
+        const profileMenuBtn = document.getElementById('profileMenuBtn');
+        const profileDropdown = document.getElementById('profileDropdown');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const userRoleDisplay = document.getElementById('userRoleDisplay');
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const actionsMenuBtn = document.getElementById('actionsMenuBtn');
+        const actionsDropdown = document.getElementById('actionsDropdown');
+        const addManualBtn = document.getElementById('addManualBtn');
+        const importDataBtn = document.getElementById('importDataBtn');
+        const downloadTemplateDropdownBtn = document.getElementById('downloadTemplateDropdownBtn');
+        const santriModal = document.getElementById('santriModal');
+        const santriForm = document.getElementById('santriForm');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const santriTableBody = document.getElementById('santriTableBody');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+        const statusModal = document.getElementById('statusModal');
+        const cancelStatusBtn = document.getElementById('cancelStatusBtn');
+        const importModal = document.getElementById('importModal');
+        const importForm = document.getElementById('importForm');
+        const cancelImportBtn = document.getElementById('cancelImportBtn');
+        const csvFileInput = document.getElementById('csvFile');
+        const importFeedback = document.getElementById('importFeedback');
+        const submitImportBtn = document.getElementById('submitImportBtn');
+        const importBtnText = document.getElementById('importBtnText');
+        const importSpinner = document.getElementById('importSpinner');
+        const filterNama = document.getElementById('filterNama');
+        const filterTingkatKelas = document.getElementById('filterTingkatKelas');
+        const filterKamar = document.getElementById('filterKamar');
+        const filterTingkatBacaan = document.getElementById('filterTingkatBacaan');
+        const filterKeterangan = document.getElementById('filterKeterangan');
+        const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+        const addAdminBtn = document.getElementById('addAdminBtn');
+        const adminModal = document.getElementById('adminModal');
+        const adminForm = document.getElementById('adminForm');
+        const cancelAdminBtn = document.getElementById('cancelAdminBtn');
+        const adminTableBody = document.getElementById('adminTableBody');
+        const addKamarBtn = document.getElementById('addKamarBtn');
+        const kamarModal = document.getElementById('kamarModal');
+        const kamarForm = document.getElementById('kamarForm');
+        const cancelKamarBtn = document.getElementById('cancelKamarBtn');
+        const kamarTableBody = document.getElementById('kamarTableBody');
+
+        let currentSantriData = [];
+        let currentAdminsData = [];
+        let currentKamarData = [];
+
+        // --- Auth & Profile Menu Logic ---
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); const email = document.getElementById('email').value; const password = document.getElementById('password').value; loginError.textContent = ''; loginBtn.disabled = true; loginSpinner.classList.remove('hidden');
+            try { await signInWithEmailAndPassword(auth, email, password); } 
+            catch (error) { console.error("Login failed:", error.code); loginError.textContent = (error.code === 'auth/invalid-credential') ? 'Email atau password salah.' : 'Terjadi kesalahan saat login.'; } 
+            finally { loginBtn.disabled = false; loginSpinner.classList.add('hidden'); }
+        });
+        logoutBtn.addEventListener('click', async (e) => { e.preventDefault(); try { await signOut(auth); } catch (error) { console.error("Logout failed:", error); showToast("Gagal untuk logout."); } });
+        profileMenuBtn.addEventListener('click', () => { profileDropdown.classList.toggle('hidden'); });
+        window.addEventListener('click', (event) => { if (!profileMenuBtn.contains(event.target) && !profileDropdown.contains(event.target)) { profileDropdown.classList.add('hidden'); } });
+
+        // --- Responsive Sidebar Logic ---
+        const toggleSidebar = () => { sidebar.classList.toggle('-translate-x-full'); sidebarOverlay.classList.toggle('hidden'); };
+        hamburgerBtn.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+
+        // --- UI Access Control ---
+        const updateUIAccess = () => {
+            const adminMenuLink = document.querySelector('a[data-page="admin"]');
+            if (currentUserRole === 'superadmin') { adminMenuLink.classList.remove('hidden'); userRoleDisplay.textContent = 'Super Admin'; } 
+            else { adminMenuLink.classList.add('hidden'); userRoleDisplay.textContent = 'Admin'; }
+        };
+
+        // --- Page Navigation Logic ---
+        const pages = document.querySelectorAll('.page-content');
+        const sidebarLinks = document.querySelectorAll('.sidebar-link');
+        const showPage = (pageId) => {
+            if (pageId === 'admin' && currentUserRole !== 'superadmin') { showToast('Anda tidak memiliki akses ke halaman ini.'); return; }
+            pages.forEach(page => page.classList.add('hidden')); document.getElementById(`page-${pageId}`).classList.remove('hidden');
+            sidebarLinks.forEach(link => { link.classList.remove('active'); if (link.dataset.page === pageId) link.classList.add('active'); });
+            if (window.innerWidth < 768) { toggleSidebar(); }
+        };
+        sidebarLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); showPage(link.dataset.page); }); });
+
+        actionsMenuBtn.addEventListener('click', () => { actionsDropdown.classList.toggle('hidden'); });
+
+        // --- Santri Modal Logic ---
+        const openSantriModal = (title, santri = null) => {
+            document.getElementById('modalTitle').textContent = title; santriForm.reset(); document.getElementById('santriId').value = '';
+            if (santri) {
+                document.getElementById('santriId').value = santri.id; document.getElementById('nama').value = santri.nama || ''; document.getElementById('nisn').value = santri.nisn || '';
+                document.getElementById('nik').value = santri.nik || ''; document.getElementById('tingkat').value = santri.tingkat || 'MTs';
+                document.getElementById('kelas').value = santri.kelas || ''; document.getElementById('kamar').value = santri.kamar || '';
+                document.getElementById('tingkatBacaan').value = santri.tingkatBacaan || '1'; document.getElementById('kontakWali').value = santri.kontakWali || '';
+                document.getElementById('dokumenKk').value = santri.dokumenKk || '';
+            }
+            santriModal.classList.remove('hidden');
+        };
+        addManualBtn.addEventListener('click', (e) => { e.preventDefault(); openSantriModal('Tambah Data Santri'); actionsDropdown.classList.add('hidden'); });
+        cancelBtn.addEventListener('click', () => santriModal.classList.add('hidden'));
+
+        const showToast = (message) => { toastMessage.textContent = message; toast.classList.remove('translate-y-20', 'opacity-0'); setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000); };
+
+        // --- Dashboard Stats Logic ---
+        const updateDashboardStats = () => {
+            const totalSantri = currentSantriData.length;
+            const sakitCount = currentSantriData.filter(s => s.keterangan?.status === 'Sakit').length;
+            const izinCount = currentSantriData.filter(s => s.keterangan?.status === 'Izin').length;
+            const tkCount = currentSantriData.filter(s => s.keterangan?.status === 'TK').length;
+            const mondokCount = totalSantri - sakitCount - izinCount - tkCount;
+            document.getElementById('stat-total').textContent = totalSantri;
+            document.getElementById('stat-kamar').textContent = currentKamarData.length;
+            document.getElementById('stat-mondok').textContent = mondokCount;
+            document.getElementById('stat-sakit').textContent = sakitCount;
+            document.getElementById('stat-izin').textContent = izinCount;
+            document.getElementById('stat-tk').textContent = tkCount;
+        };
+
+        // --- Render Santri Table ---
+        const renderSantriTable = (data) => {
+            santriTableBody.innerHTML = ''; if (data.length === 0) { santriTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-gray-500">Tidak ada data santri yang cocok.</td></tr>`; return; }
+            data.forEach(santri => {
+                const tr = document.createElement('tr'); tr.classList.add('hover:bg-gray-50'); tr.setAttribute('data-id', santri.id);
+                let ketBadge = `<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded-full">Mondok</span>`;
+                if (santri.keterangan?.status) {
+                    const { status, tanggal, linkSurat } = santri.keterangan;
+                    const linkEl = linkSurat ? ` <a href="${linkSurat}" target="_blank" class="text-xs text-blue-600 hover:underline">[Lihat Surat]</a>` : '';
+                    if (status === 'Sakit') ketBadge = `<span class="px-2 py-1 text-xs font-semibold text-yellow-800 bg-yellow-200 rounded-full">Sakit (${tanggal})</span>${linkEl}`;
+                    else if (status === 'Izin') ketBadge = `<span class="px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-200 rounded-full">Izin (${tanggal})</span>${linkEl}`;
+                    else if (status === 'TK') ketBadge = `<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-200 rounded-full">TK (${tanggal})</span>${linkEl}`;
+                }
+                tr.innerHTML = `
+                    <td class="px-6 py-4"><div class="font-medium text-gray-900">${santri.nama}</div>${santri.dokumenKk ? `<a href="${santri.dokumenKk}" target="_blank" class="text-xs text-blue-600 hover:underline">Lihat KK</a>` : ''}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600"><div>NISN: ${santri.nisn || '-'}</div><div>NIK: ${santri.nik || '-'}</div></td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${santri.tingkat} / ${santri.kelas}</td> <td class="px-6 py-4 text-sm text-gray-600">${santri.kamar || '-'}</td>
+                    <td class="px-6 py-4 text-center text-sm font-bold text-gray-800">${santri.tingkatBacaan}</td> <td class="px-6 py-4 text-sm text-gray-600">${santri.kontakWali || '-'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${ketBadge}</td>
+                    <td class="px-6 py-4 text-center"><div class="flex items-center justify-center gap-2">
+                           <button class="status-btn text-blue-600 hover:text-blue-800" title="Ubah Keterangan"><i data-lucide="clipboard-edit" class="w-5 h-5"></i></button>
+                            <button class="edit-btn text-green-600 hover:text-green-800" title="Edit Data"><i data-lucide="edit" class="w-5 h-5"></i></button>
+                            <button class="delete-btn text-red-600 hover:text-red-800" title="Hapus Data"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                    </div></td>`;
+                santriTableBody.appendChild(tr);
+            });
+            lucide.createIcons();
+        };
+
+        // --- Firestore Santri CRUD ---
+        const listenToSantriData = () => {
+             if (!santriCollectionRef) return; if (unsubscribeSantri) unsubscribeSantri();
+             santriTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-gray-500"><div class="flex flex-col items-center justify-center gap-2"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4 animate-spin"></div><p>Memuat data santri...</p></div></td></tr>`;
+             unsubscribeSantri = onSnapshot(santriCollectionRef, (snapshot) => {
+                currentSantriData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                currentSantriData.sort((a, b) => a.nama.localeCompare(b.nama)); applyFilters(); updateDashboardStats(); renderKamarTable();
+            }, (error) => { console.error("Error listening to santri data:", error); santriTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500">Gagal memuat data santri.</td></tr>`; });
+        };
+
+        santriForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); const id = document.getElementById('santriId').value;
+            const santriData = {
+                nama: document.getElementById('nama').value, nisn: document.getElementById('nisn').value, nik: document.getElementById('nik').value, tingkat: document.getElementById('tingkat').value,
+                kelas: document.getElementById('kelas').value, kamar: document.getElementById('kamar').value, tingkatBacaan: document.getElementById('tingkatBacaan').value,
+                kontakWali: document.getElementById('kontakWali').value, dokumenKk: document.getElementById('dokumenKk').value,
+            };
+            try {
+                if (id) { await updateDoc(doc(db, 'santri', id), santriData); showToast('Data santri berhasil diperbarui!'); }
+                else { await addDoc(santriCollectionRef, santriData); showToast('Data santri berhasil ditambahkan!'); }
+                santriModal.classList.add('hidden');
+            } catch (error) { console.error("Error saving santri data:", error); showToast('Gagal menyimpan data. Periksa security rules.'); }
+        });
+        
+        santriTableBody.addEventListener('click', async (e) => {
+            const button = e.target.closest('button'); if (!button) return; const tr = e.target.closest('tr'); const id = tr.getAttribute('data-id');
+            const santri = currentSantriData.find(s => s.id === id); if (button.classList.contains('edit-btn')) openSantriModal('Edit Data Santri', santri);
+            if (button.classList.contains('delete-btn')) {
+                if (window.confirm(`Yakin ingin menghapus data: ${santri.nama}?`)) {
+                    try { await deleteDoc(doc(db, 'santri', id)); showToast('Data santri berhasil dihapus.'); } 
+                    catch (error) { console.error("Error deleting santri:", error); showToast('Gagal menghapus data.'); }
+                }
+            }
+            if (button.classList.contains('status-btn')) openStatusModal(santri);
+        });
+        
+        // --- Status Modal Logic ---
+        let currentStatusSantriId = null;
+        const openStatusModal = (santri) => { currentStatusSantriId = santri.id; document.getElementById('statusSantriName').textContent = santri.nama; document.getElementById('linkSuratInput').value = santri.keterangan?.linkSurat || ''; statusModal.classList.remove('hidden'); };
+        const closeStatusModal = () => { statusModal.classList.add('hidden'); };
+        const updateStatus = async (status) => {
+            if (!currentStatusSantriId) return; const today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }); const linkSurat = document.getElementById('linkSuratInput').value.trim();
+            let dataToUpdate;
+            if (status === 'Sakit' || status === 'Izin' || status === 'TK') { const keterangan = { status, tanggal: today }; if (linkSurat) keterangan.linkSurat = linkSurat; dataToUpdate = { keterangan }; }
+            else { dataToUpdate = { keterangan: {} }; }
+            try { await updateDoc(doc(db, 'santri', currentStatusSantriId), dataToUpdate); showToast(`Keterangan berhasil diperbarui.`); closeStatusModal(); }
+            catch (error) { console.error("Error updating status:", error); showToast('Gagal mengubah keterangan. Periksa security rules.'); }
+        };
+        document.getElementById('setSakitBtn').addEventListener('click', () => updateStatus('Sakit'));
+        document.getElementById('setIzinBtn').addEventListener('click', () => updateStatus('Izin'));
+        document.getElementById('setTkBtn').addEventListener('click', () => updateStatus('TK'));
+        document.getElementById('clearStatusBtn').addEventListener('click', () => updateStatus('Clear'));
+        cancelStatusBtn.addEventListener('click', closeStatusModal);
+
+        // --- Admin Management ---
+        const renderAdminTable = () => {
+            adminTableBody.innerHTML = ''; if (currentAdminsData.length === 0) { adminTableBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-500">Belum ada admin.</td></tr>`; return; }
+            currentAdminsData.forEach(admin => {
+                const tr = document.createElement('tr'); tr.setAttribute('data-id', admin.id); const isCurrentUser = auth.currentUser && auth.currentUser.uid === admin.id;
+                tr.innerHTML = `
+                    <td class="px-6 py-4"><div class="font-medium text-gray-900">${admin.email} ${isCurrentUser ? '(Anda)' : ''}</div></td>
+                    <td class="px-6 py-4 text-sm text-gray-600 font-medium">${admin.role === 'superadmin' ? 'Super Admin' : 'Admin'}</td>
+                    <td class="px-6 py-4">${admin.status === 'aktif' ? `<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-200 rounded-full">Aktif</span>` : `<span class="px-2 py-1 text-xs font-semibold text-red-800 bg-red-200 rounded-full">Nonaktif</span>`}</td>
+                    <td class="px-6 py-4 text-center"><div class="flex items-center justify-center gap-2">
+                         <button class="edit-admin-btn text-green-600 hover:text-green-800" title="Edit Admin"><i data-lucide="edit" class="w-5 h-5"></i></button>
+                        ${!isCurrentUser ? `<button class="delete-admin-btn text-red-600 hover:text-red-800" title="Hapus Admin"><i data-lucide="trash-2" class="w-5 h-5"></i></button>` : ''}
+                    </div></td>`;
+                adminTableBody.appendChild(tr);
+            });
+            lucide.createIcons();
+        };
+        const listenToAdminsData = () => {
+            const adminsCollectionRef = collection(db, 'admins'); if (unsubscribeAdmins) unsubscribeAdmins();
+            unsubscribeAdmins = onSnapshot(adminsCollectionRef, (snapshot) => {
+                currentAdminsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderAdminTable();
+            }, (error) => { console.error("Error listening to admins data:", error); adminTableBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-red-500">Gagal memuat data admin.</td></tr>`; });
+        };
+        const openAdminModal = (admin = null) => {
+            adminForm.reset(); const modalTitle = document.getElementById('adminModalTitle'); const adminUidInput = document.getElementById('adminUid');
+            if (admin) {
+                modalTitle.textContent = 'Edit Admin'; adminUidInput.value = admin.id; adminUidInput.disabled = true;
+                document.getElementById('adminEmail').value = admin.email; document.getElementById('adminEmail').disabled = true;
+                document.getElementById('adminRole').value = admin.role; document.getElementById('adminStatus').value = admin.status;
+            } else {
+                modalTitle.textContent = 'Tambah Admin Baru'; adminUidInput.disabled = false; document.getElementById('adminEmail').disabled = false;
+            }
+            adminModal.classList.remove('hidden');
+        };
+        addAdminBtn.addEventListener('click', () => openAdminModal()); cancelAdminBtn.addEventListener('click', () => adminModal.classList.add('hidden'));
+        adminForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); const uid = document.getElementById('adminUid').value.trim();
+            const adminData = { email: document.getElementById('adminEmail').value.trim().toLowerCase(), role: document.getElementById('adminRole').value, status: document.getElementById('adminStatus').value, };
+            if (!uid || !adminData.email) { showToast("UID dan Email tidak boleh kosong."); return; }
+            try { const docRef = doc(db, 'admins', uid); await setDoc(docRef, adminData, { merge: true }); showToast('Data admin berhasil disimpan!'); adminModal.classList.add('hidden'); }
+            catch (error) { console.error("Error saving admin data:", error); showToast('Gagal menyimpan data admin.'); }
+        });
+        adminTableBody.addEventListener('click', async (e) => {
+            const button = e.target.closest('button'); if (!button) return; const tr = e.target.closest('tr'); const id = tr.getAttribute('data-id');
+            const admin = currentAdminsData.find(a => a.id === id); if (button.classList.contains('edit-admin-btn')) { openAdminModal(admin); }
+            if (button.classList.contains('delete-admin-btn')) {
+                if (window.confirm(`Yakin ingin menghapus admin: ${admin.email}? Ini tidak bisa dibatalkan.`)) {
+                    try { await deleteDoc(doc(db, 'admins', id)); showToast('Admin berhasil dihapus.'); }
+                    catch (error) { console.error("Error deleting admin:", error); showToast('Gagal menghapus admin.'); }
+                }
+            }
+        });
+
+        // --- Kamar Management ---
+        const renderKamarTable = () => {
+            kamarTableBody.innerHTML = ''; if (currentKamarData.length === 0) { kamarTableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">Belum ada data kamar.</td></tr>`; return; }
+            currentKamarData.forEach(kamar => {
+                const tr = document.createElement('tr'); tr.setAttribute('data-id', kamar.id);
+                const santriCount = currentSantriData.filter(s => s.kamar === kamar.nama).length;
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900">${kamar.nama}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${kamar.penanggungJawab || '-'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${kamar.kapasitas}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${santriCount} / ${kamar.kapasitas}</td>
+                    <td class="px-6 py-4 text-center"><div class="flex items-center justify-center gap-2">
+                        <button class="edit-kamar-btn text-green-600 hover:text-green-800" title="Edit Kamar"><i data-lucide="edit" class="w-5 h-5"></i></button>
+                        <button class="delete-kamar-btn text-red-600 hover:text-red-800" title="Hapus Kamar"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                    </div></td>`;
+                kamarTableBody.appendChild(tr);
+            });
+            lucide.createIcons();
+        };
+        const listenToKamarData = () => {
+            if (!kamarCollectionRef) return; if (unsubscribeKamar) unsubscribeKamar();
+            unsubscribeKamar = onSnapshot(kamarCollectionRef, (snapshot) => {
+                currentKamarData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                currentKamarData.sort((a,b) => a.nama.localeCompare(b.nama));
+                renderKamarTable(); updateDashboardStats(); updateKamarDropdowns();
+            }, (error) => { console.error("Error listening to kamar data:", error); kamarTableBody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-red-500">Gagal memuat data kamar.</td></tr>`; });
+        };
+        const openKamarModal = (kamar = null) => {
+            kamarForm.reset(); document.getElementById('kamarId').value = ''; const modalTitle = document.getElementById('kamarModalTitle');
+            if (kamar) {
+                modalTitle.textContent = 'Edit Kamar'; document.getElementById('kamarId').value = kamar.id;
+                document.getElementById('kamarNama').value = kamar.nama;
+                document.getElementById('penanggungJawab').value = kamar.penanggungJawab || '';
+                document.getElementById('kamarKapasitas').value = kamar.kapasitas;
+            } else { modalTitle.textContent = 'Tambah Kamar Baru'; }
+            kamarModal.classList.remove('hidden');
+        };
+        addKamarBtn.addEventListener('click', () => openKamarModal());
+        cancelKamarBtn.addEventListener('click', () => kamarModal.classList.add('hidden'));
+        kamarForm.addEventListener('submit', async(e) => {
+            e.preventDefault(); const id = document.getElementById('kamarId').value;
+            const kamarData = { 
+                nama: document.getElementById('kamarNama').value.trim(),
+                penanggungJawab: document.getElementById('penanggungJawab').value.trim(),
+                kapasitas: parseInt(document.getElementById('kamarKapasitas').value) 
+            };
+            if (!kamarData.nama || !kamarData.penanggungJawab || isNaN(kamarData.kapasitas) || kamarData.kapasitas < 1) { showToast("Semua field harus diisi dengan valid."); return; }
+            try {
+                if (id) { await updateDoc(doc(db, 'kamar', id), kamarData); showToast('Data kamar berhasil diperbarui!'); }
+                else { await addDoc(kamarCollectionRef, kamarData); showToast('Kamar baru berhasil ditambahkan!'); }
+                kamarModal.classList.add('hidden');
+            } catch (error) { console.error("Error saving kamar data:", error); showToast('Gagal menyimpan data kamar.'); }
+        });
+        kamarTableBody.addEventListener('click', async(e) => {
+            const button = e.target.closest('button'); if (!button) return; const tr = e.target.closest('tr'); const id = tr.getAttribute('data-id');
+            const kamar = currentKamarData.find(k => k.id === id);
+            if (button.classList.contains('edit-kamar-btn')) { openKamarModal(kamar); }
+            if (button.classList.contains('delete-kamar-btn')) {
+                const santriInRoom = currentSantriData.filter(s => s.kamar === kamar.nama).length;
+                if (santriInRoom > 0) { alert(`Tidak bisa menghapus kamar "${kamar.nama}" karena masih ada ${santriInRoom} santri di dalamnya.`); return; }
+                if (window.confirm(`Yakin ingin menghapus kamar: ${kamar.nama}?`)) {
+                    try { await deleteDoc(doc(db, 'kamar', id)); showToast('Kamar berhasil dihapus.'); }
+                    catch(err) { console.error(err); showToast('Gagal menghapus kamar.'); }
+                }
+            }
+        });
+
+        const updateKamarDropdowns = () => {
+            const kamarSelect = document.getElementById('kamar'); const filterKamarSelect = document.getElementById('filterKamar');
+            kamarSelect.innerHTML = '<option value="">Pilih Kamar</option>'; filterKamarSelect.innerHTML = '<option value="">Semua</option>';
+            currentKamarData.forEach(kamar => {
+                const option = `<option value="${kamar.nama}">${kamar.nama}</option>`;
+                kamarSelect.innerHTML += option; filterKamarSelect.innerHTML += option;
+            });
+        };
+
+        // --- Import/Export Logic ---
+        const downloadTemplate = () => { const headers = "nama,nisn,nik,tingkat,kelas,kamar,tingkatBacaan,kontakWali,dokumenKk"; const csvContent = "data:text/csv;charset=utf-8," + headers; const link = document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "template_data_santri.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link); showToast("Template berhasil diunduh."); };
+        const resetImportButton = () => { submitImportBtn.disabled = false; importBtnText.textContent = "Import"; importSpinner.classList.add('hidden'); };
+        const showImportError = (message) => { importFeedback.textContent = message; importFeedback.className = "mt-4 text-sm text-red-600"; resetImportButton(); };
+        const handleImport = (e) => {
+            e.preventDefault(); const file = csvFileInput.files[0]; if (!file) { showImportError("Silakan pilih file."); return; }
+            submitImportBtn.disabled = true; importBtnText.textContent = "Mengimpor..."; importSpinner.classList.remove('hidden'); importFeedback.innerHTML = '';
+            Papa.parse(file, {
+                header: true, skipEmptyLines: true,
+                complete: async (results) => {
+                    const data = results.data; const requiredFields = ['nama', 'tingkat', 'kelas', 'tingkatBacaan'];
+                    if (data.length === 0 || !results.meta.fields.includes('nama')) { showImportError("Format CSV tidak sesuai."); return; }
+                    let processedCount = 0, errorCount = 0; const batch = writeBatch(db);
+                    data.forEach(row => {
+                         if (requiredFields.every(field => row[field]?.trim())) {
+                            const newSantriRef = doc(santriCollectionRef);
+                            batch.set(newSantriRef, {
+                                nama: row.nama.trim(), nisn: row.nisn?.trim() || '', nik: row.nik?.trim() || '', tingkat: row.tingkat.trim(), kelas: row.kelas.trim(), kamar: row.kamar?.trim() || '',
+                                tingkatBacaan: row.tingkatBacaan.trim(), kontakWali: row.kontakWali?.trim() || '', dokumenKk: row.dokumenKk?.trim() || '', keterangan: {} 
+                            }); processedCount++;
+                        } else { errorCount++; }
+                    });
+                    try { await batch.commit(); showToast(`${processedCount} data diimpor. ${errorCount > 0 ? `${errorCount} baris gagal.` : ''}`); }
+                    catch(err) { showImportError("Gagal menyimpan data impor."); }
+                    importModal.classList.add('hidden'); resetImportButton();
+                },
+                error: (error) => { showImportError("Gagal memproses file CSV."); }
+            });
+        };
+        importDataBtn.addEventListener('click', (e) => { e.preventDefault(); importModal.classList.remove('hidden'); importForm.reset(); importFeedback.innerHTML = ''; resetImportButton(); actionsDropdown.classList.add('hidden'); });
+        cancelImportBtn.addEventListener('click', () => importModal.classList.add('hidden'));
+        downloadTemplateDropdownBtn.addEventListener('click', (e) => { e.preventDefault(); downloadTemplate(); actionsDropdown.classList.add('hidden'); });
+        importForm.addEventListener('submit', handleImport);
+
+        // --- Filter Logic ---
+        const applyFilters = () => {
+            const searchTerm = filterNama.value.toLowerCase().trim(); const tingkatKelasTerm = filterTingkatKelas.value.toLowerCase().trim(); const kamarTerm = filterKamar.value; const tingkatBacaanTerm = filterTingkatBacaan.value; const keteranganTerm = filterKeterangan.value;
+            let filteredData = currentSantriData; if (searchTerm) filteredData = filteredData.filter(s => s.nama.toLowerCase().includes(searchTerm)); if (tingkatKelasTerm) filteredData = filteredData.filter(s => `${s.tingkat} ${s.kelas}`.toLowerCase().includes(tingkatKelasTerm));
+            if (kamarTerm) filteredData = filteredData.filter(s => s.kamar === kamarTerm); if (tingkatBacaanTerm) filteredData = filteredData.filter(s => s.tingkatBacaan === tingkatBacaanTerm);
+            if (keteranganTerm) { if (keteranganTerm === 'Mondok') filteredData = filteredData.filter(s => !s.keterangan?.status); else filteredData = filteredData.filter(s => s.keterangan?.status === keteranganTerm); }
+            renderSantriTable(filteredData);
+        };
+        const resetFilters = () => { filterNama.value = ''; filterTingkatKelas.value = ''; filterKamar.value = ''; filterTingkatBacaan.value = ''; filterKeterangan.value = ''; applyFilters(); showToast("Filter direset."); };
+        [filterNama, filterTingkatKelas].forEach(el => el.addEventListener('input', applyFilters));
+        [filterKamar, filterTingkatBacaan, filterKeterangan].forEach(el => el.addEventListener('change', applyFilters));
+        resetFiltersBtn.addEventListener('click', resetFilters);
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            initializeFirebase();
+        });
+    </script>
+</body>
+</html>
+
