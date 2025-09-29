@@ -522,7 +522,7 @@
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, setLogLevel, writeBatch, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Configuration ---
@@ -535,61 +535,9 @@
             appId: "1:618367271315:web:8064c729cd8e95d67a866",
             measurementId: "G-6E83VQKCTZ"
         };
-
-        // --- Firebase Initialization ---
-        let app, db, auth, santriCollectionRef, kamarCollectionRef, unsubscribeSantri, unsubscribeAdmins, unsubscribeKamar;
-        let currentUserRole = 'admin';
-
-        async function initializeFirebase() {
-            if (!firebaseConfig || !firebaseConfig.projectId) {
-                console.error("Firebase config is not available or invalid.");
-                loginError.textContent = "Konfigurasi Firebase tidak ditemukan.";
-                return;
-            }
-            
-            try {
-                app = initializeApp(firebaseConfig);
-                const analytics = getAnalytics(app);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                setLogLevel('error'); 
-
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        const adminDocRef = doc(db, 'admins', user.uid);
-                        const adminDocSnap = await getDoc(adminDocRef);
-
-                        if (adminDocSnap.exists() && adminDocSnap.data().status === 'aktif') {
-                            currentUserRole = adminDocSnap.data().role || 'admin';
-                            
-                            // Arahkan ke dashboard jika sudah login
-                            window.location.href = 'index.html';
-
-                        } else {
-                            await signOut(auth);
-                            loginError.textContent = 'Akun Anda tidak aktif atau tidak terdaftar.';
-                        }
-                    } else {
-                        // Tetap di halaman login jika belum login
-                    }
-                });
-
-            } catch(error) {
-                console.error("Firebase initialization failed:", error);
-                loginError.textContent = "Inisialisasi aplikasi gagal.";
-            }
-        }
-
+        
         // --- DOM Elements ---
-        const loginContainer = document.getElementById('loginContainer');
         const appContainer = document.getElementById('appContainer');
-        const loginForm = document.getElementById('loginForm');
-        const loginError = document.getElementById('loginError');
-        const loginBtn = document.getElementById('loginBtn');
-        const loginSpinner = document.getElementById('loginSpinner');
-        const profileMenuBtn = document.getElementById('profileMenuBtn');
-        const profileDropdown = document.getElementById('profileDropdown');
-        const logoutBtn = document.getElementById('logoutBtn');
         const userRoleDisplay = document.getElementById('userRoleDisplay');
         const hamburgerBtn = document.getElementById('hamburger-btn');
         const sidebar = document.getElementById('sidebar');
@@ -631,31 +579,20 @@
         const kamarForm = document.getElementById('kamarForm');
         const cancelKamarBtn = document.getElementById('cancelKamarBtn');
         const kamarTableBody = document.getElementById('kamarTableBody');
-        const togglePasswordBtn = document.getElementById('togglePassword');
-        const passwordInput = document.getElementById('password');
-        const eyeIcon = document.getElementById('eye-icon');
-        const eyeOffIcon = document.getElementById('eye-off-icon');
+        const profileMenuBtn = document.getElementById('profileMenuBtn');
+        const profileDropdown = document.getElementById('profileDropdown');
+        const logoutBtn = document.getElementById('logoutBtn');
 
+        // --- Firebase Initialization ---
+        let app, db, auth, santriCollectionRef, kamarCollectionRef, unsubscribeSantri, unsubscribeAdmins, unsubscribeKamar;
+        let currentUserRole = 'admin';
+        
         let currentSantriData = [];
         let currentAdminsData = [];
         let currentKamarData = [];
-
-        // --- Auth & Profile Menu Logic ---
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); const email = document.getElementById('email').value; const password = passwordInput.value; loginError.textContent = ''; loginBtn.disabled = true; loginSpinner.classList.remove('hidden');
-            try { await signInWithEmailAndPassword(auth, email, password); } 
-            catch (error) { console.error("Login failed:", error.code); loginError.textContent = (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') ? 'Email atau password salah.' : 'Terjadi kesalahan saat login.'; } 
-            finally { loginBtn.disabled = false; loginSpinner.classList.add('hidden'); }
-        });
         
-        togglePasswordBtn.addEventListener('click', () => {
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            eyeIcon.classList.toggle('hidden');
-            eyeOffIcon.classList.toggle('hidden');
-        });
-
-        logoutBtn.addEventListener('click', async (e) => { e.preventDefault(); try { await signOut(auth); window.location.href = 'login.html'; } catch (error) { console.error("Logout failed:", error); showToast("Gagal untuk logout."); } });
+        // --- Auth & Profile Menu Logic ---
+        logoutBtn.addEventListener('click', async (e) => { e.preventDefault(); try { await signOut(auth); } catch (error) { console.error("Logout failed:", error); showToast("Gagal untuk logout."); } });
         profileMenuBtn.addEventListener('click', () => { profileDropdown.classList.toggle('hidden'); });
         window.addEventListener('click', (event) => { if (!profileMenuBtn.contains(event.target) && !profileDropdown.contains(event.target)) { profileDropdown.classList.add('hidden'); } });
 
