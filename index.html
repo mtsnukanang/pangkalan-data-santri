@@ -11,7 +11,7 @@
     
     <!-- PWA Manifest and Theme -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#22c55e">
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/mtsnukanang/pangkalan-data-santri/main/logo/sidanu-192.png">
     <link rel="icon" href="https://raw.githubusercontent.com/mtsnukanang/pangkalan-data-santri/main/logo/sidanu-192.png" type="image/png">
 
@@ -52,37 +52,6 @@
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-
-    <!-- Login Container -->
-    <div id="loginContainer" class="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-        <div class="w-full max-w-md">
-            <header class="mb-8 text-center">
-                <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Pangkalan Data Santri</h1>
-                <p class="text-lg text-gray-600 mt-2">Pondok Pesantren Nahdlatul Ummah (PNU) Kanang</p>
-            </header>
-            <div class="bg-white p-8 rounded-lg shadow-lg">
-                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Login Pengurus</h2>
-                <form id="loginForm">
-                    <div class="mb-4">
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <input type="email" id="email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
-                    </div>
-                    <div class="mb-6">
-                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                        <input type="password" id="password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
-                    </div>
-                    <p id="loginError" class="text-red-500 text-sm mb-4 text-center"></p>
-                    <button type="submit" id="loginBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2">
-                        <span>Login</span>
-                        <div id="loginSpinner" class="hidden w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
-                    </button>
-                </form>
-            </div>
-             <p class="text-center text-xs text-gray-500 mt-4">
-                Catatan: Akun harus dibuat terlebih dahulu melalui Firebase Console.
-            </p>
-        </div>
-    </div>
 
     <!-- Main App Container -->
     <div id="appContainer" class="hidden">
@@ -592,31 +561,16 @@
 
                         if (adminDocSnap.exists() && adminDocSnap.data().status === 'aktif') {
                             currentUserRole = adminDocSnap.data().role || 'admin';
-                            loginContainer.classList.add('hidden');
-                            appContainer.classList.remove('hidden');
-                            document.getElementById('userEmailDisplay').textContent = user.email;
-                            updateUIAccess();
                             
-                            santriCollectionRef = collection(db, 'santri');
-                            kamarCollectionRef = collection(db, 'kamar');
-                            listenToSantriData();
-                            listenToKamarData();
+                            // Arahkan ke dashboard jika sudah login
+                            window.location.href = 'index.html';
 
-                            if (currentUserRole === 'superadmin') {
-                                listenToAdminsData();
-                            }
                         } else {
                             await signOut(auth);
                             loginError.textContent = 'Akun Anda tidak aktif atau tidak terdaftar.';
                         }
                     } else {
-                        currentUserRole = 'admin';
-                        appContainer.classList.add('hidden');
-                        loginContainer.classList.remove('hidden');
-                        loginError.textContent = '';
-                        if (unsubscribeSantri) unsubscribeSantri();
-                        if (unsubscribeAdmins) unsubscribeAdmins();
-                        if (unsubscribeKamar) unsubscribeKamar();
+                        // Tetap di halaman login jika belum login
                     }
                 });
 
@@ -677,6 +631,10 @@
         const kamarForm = document.getElementById('kamarForm');
         const cancelKamarBtn = document.getElementById('cancelKamarBtn');
         const kamarTableBody = document.getElementById('kamarTableBody');
+        const togglePasswordBtn = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+        const eyeIcon = document.getElementById('eye-icon');
+        const eyeOffIcon = document.getElementById('eye-off-icon');
 
         let currentSantriData = [];
         let currentAdminsData = [];
@@ -684,12 +642,20 @@
 
         // --- Auth & Profile Menu Logic ---
         loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); const email = document.getElementById('email').value; const password = document.getElementById('password').value; loginError.textContent = ''; loginBtn.disabled = true; loginSpinner.classList.remove('hidden');
+            e.preventDefault(); const email = document.getElementById('email').value; const password = passwordInput.value; loginError.textContent = ''; loginBtn.disabled = true; loginSpinner.classList.remove('hidden');
             try { await signInWithEmailAndPassword(auth, email, password); } 
-            catch (error) { console.error("Login failed:", error.code); loginError.textContent = (error.code === 'auth/invalid-credential') ? 'Email atau password salah.' : 'Terjadi kesalahan saat login.'; } 
+            catch (error) { console.error("Login failed:", error.code); loginError.textContent = (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') ? 'Email atau password salah.' : 'Terjadi kesalahan saat login.'; } 
             finally { loginBtn.disabled = false; loginSpinner.classList.add('hidden'); }
         });
-        logoutBtn.addEventListener('click', async (e) => { e.preventDefault(); try { await signOut(auth); } catch (error) { console.error("Logout failed:", error); showToast("Gagal untuk logout."); } });
+        
+        togglePasswordBtn.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            eyeIcon.classList.toggle('hidden');
+            eyeOffIcon.classList.toggle('hidden');
+        });
+
+        logoutBtn.addEventListener('click', async (e) => { e.preventDefault(); try { await signOut(auth); window.location.href = 'login.html'; } catch (error) { console.error("Logout failed:", error); showToast("Gagal untuk logout."); } });
         profileMenuBtn.addEventListener('click', () => { profileDropdown.classList.toggle('hidden'); });
         window.addEventListener('click', (event) => { if (!profileMenuBtn.contains(event.target) && !profileDropdown.contains(event.target)) { profileDropdown.classList.add('hidden'); } });
 
@@ -1012,7 +978,51 @@
         // --- Initial Load ---
         document.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            initializeFirebase();
+            
+            // Pindahkan inisialisasi Firebase ke sini
+            // Initialize Firebase
+            try {
+                app = initializeApp(firebaseConfig);
+                const analytics = getAnalytics(app);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                setLogLevel('error'); 
+
+                // Monitor auth state to decide which page to show
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        const adminDocRef = doc(db, 'admins', user.uid);
+                        const adminDocSnap = await getDoc(adminDocRef);
+
+                        if (adminDocSnap.exists() && adminDocSnap.data().status === 'aktif') {
+                            currentUserRole = adminDocSnap.data().role || 'admin';
+                            
+                            appContainer.classList.remove('hidden');
+                            
+                            updateUIAccess();
+                            
+                            santriCollectionRef = collection(db, 'santri');
+                            kamarCollectionRef = collection(db, 'kamar');
+                            listenToSantriData();
+                            listenToKamarData();
+
+                            if (currentUserRole === 'superadmin') {
+                                listenToAdminsData();
+                            }
+                        } else {
+                            await signOut(auth);
+                            window.location.href = 'login.html';
+                        }
+                    } else {
+                        // Jika tidak ada user, arahkan ke login.html
+                        window.location.href = 'login.html';
+                    }
+                });
+
+            } catch(error) {
+                console.error("Firebase initialization failed:", error);
+                document.body.innerHTML = "Gagal menginisialisasi aplikasi. Cek konsol."
+            }
 
             // Register Service Worker
             if ('serviceWorker' in navigator) {
