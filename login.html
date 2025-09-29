@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Pangkalan Data Santri</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- PWA Manifest and Theme -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#22c55e">
+    <link rel="icon" href="https://raw.githubusercontent.com/mtsnukanang/pangkalan-data-santri/main/logo/sidanu-192.png" type="image/png">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+
+    <!-- Login Container -->
+    <div id="loginContainer" class="min-h-screen flex items-center justify-center p-4 font-sans">
+        <div class="w-full max-w-4xl mx-auto">
+            <div class="flex flex-col md:flex-row rounded-xl shadow-2xl overflow-hidden">
+                <!-- Left Panel -->
+                <div class="w-full md:w-1/2 bg-green-600 text-white p-8 md:p-12 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="bg-white p-2 rounded-md">
+                                <img src="https://raw.githubusercontent.com/mtsnukanang/pangkalan-data-santri/main/logo/sidanu-192.png" alt="Logo PNU" class="h-8 w-8">
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold tracking-wider text-green-200">BASIS DATA SANTRI NAHDLATUL UMMAH KANANG</p>
+                                <h1 class="text-xl font-bold">Pondok Pesantren Nahdlatul Ummah (PNU) Kanang</h1>
+                            </div>
+                        </div>
+                        <div class="bg-green-700 bg-opacity-50 p-6 rounded-lg">
+                            <p class="text-green-100 leading-relaxed">
+                                Kelola data santri, kamar, Menampilkan ringkasan data penting seperti total santri, jumlah kamar, serta rekapitulasi santri yang mondok, sakit, izin, atau tanpa keterangan.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 mt-8 text-green-200 text-sm">
+                        <i data-lucide="shield" class="w-4 h-4"></i>
+                        <span>PNU Kanang</span>
+                    </div>
+                </div>
+                <!-- Right Panel (Login Form) -->
+                <div class="w-full md:w-1/2 bg-gray-800 p-8 md:p-12">
+                    <h2 class="text-2xl font-bold text-white mb-2">Login Pengurus</h2>
+                    <p class="text-gray-400 mb-8">Masuk untuk mengelola Basis Data Santri Nahdlatul Ummah Kanang.</p>
+                    <form id="loginForm" class="space-y-6">
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <i data-lucide="mail" class="w-5 h-5 text-gray-400"></i>
+                                </span>
+                                <input type="email" id="email" class="w-full pl-10 pr-4 py-2.5 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                            <div class="relative">
+                                 <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <i data-lucide="lock" class="w-5 h-5 text-gray-400"></i>
+                                </span>
+                                <input type="password" id="password" class="w-full pl-10 pr-10 py-2.5 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                                <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    <i data-lucide="eye" id="eye-icon" class="w-5 h-5 text-gray-400"></i>
+                                    <i data-lucide="eye-off" id="eye-off-icon" class="w-5 h-5 text-gray-400 hidden"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <p id="loginError" class="text-red-500 text-sm text-center"></p>
+                        <button type="submit" id="loginBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105 flex items-center justify-center gap-2">
+                             <i data-lucide="log-in" class="w-5 h-5"></i>
+                            <span>Login</span>
+                            <div id="loginSpinner" class="hidden w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
+                        </button>
+                    </form>
+                    <p class="text-center text-xs text-gray-500 mt-6">
+                        Catatan: Akun harus dibuat terlebih dahulu melalui Firebase Console.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAfvSB91YtNG0lOZB-MfvFjrOLCbMKCRME",
+            authDomain: "pangkalan-data-santri.firebaseapp.com",
+            projectId: "pangkalan-data-santri",
+            storageBucket: "pangkalan-data-santri.appspot.com",
+            messagingSenderId: "618367271315",
+            appId: "1:618367271315:web:8064c729cd8e95d67a866",
+            measurementId: "G-6E83VQKCTZ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginSpinner = document.getElementById('loginSpinner');
+        const togglePasswordBtn = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
+        const eyeIcon = document.getElementById('eye-icon');
+        const eyeOffIcon = document.getElementById('eye-off-icon');
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // Jika pengguna sudah login, arahkan ke dashboard
+                window.location.href = 'index.html';
+            }
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = passwordInput.value;
+            loginError.textContent = '';
+            loginBtn.disabled = true;
+            loginSpinner.classList.remove('hidden');
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // onAuthStateChanged akan menangani pengalihan halaman
+            } catch (error) {
+                console.error("Login failed:", error.code);
+                loginError.textContent = (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') ? 'Email atau password salah.' : 'Terjadi kesalahan saat login.';
+            } finally {
+                loginBtn.disabled = false;
+                loginSpinner.classList.add('hidden');
+            }
+        });
+
+        togglePasswordBtn.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            eyeIcon.classList.toggle('hidden');
+            eyeOffIcon.classList.toggle('hidden');
+        });
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
